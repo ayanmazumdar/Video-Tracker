@@ -6,91 +6,109 @@
     <title>Video Tracker</title>
     <style>
         body {
-            width: 350px;
+            width: 360px; /* Slightly wider for the chart */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f9;
+            background-color: #f8fafc;
             color: #333;
             margin: 0;
             padding: 0;
         }
         .container { padding: 20px; text-align: center; }
-        h1 { font-size: 18px; margin-bottom: 5px; color: #4a4a4a; }
-        .date { font-size: 12px; color: #888; margin-bottom: 15px; }
+        
+        /* VIEWS UTILITY */
+        .hidden { display: none !important; }
+
+        /* --- MAIN VIEW STYLES --- */
+        h1 { font-size: 18px; margin-bottom: 5px; color: #1e293b; }
+        .date { font-size: 12px; color: #64748b; margin-bottom: 15px; }
         
         .timer-card {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 15px;
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
         }
-        .time-display { font-size: 32px; font-weight: bold; color: #2563eb; }
-        .label { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 5px; }
+        .time-display { font-size: 36px; font-weight: 700; color: #2563eb; }
+        .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-top: 5px; }
 
         .breakdown {
-            text-align: left;
-            background: white;
-            border-radius: 8px;
-            padding: 5px 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            font-size: 13px;
+            text-align: left; background: white; border-radius: 8px; padding: 5px 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 13px; margin-bottom: 20px;
+            max-height: 250px; overflow-y: auto;
         }
 
-        /* Accordion Styles */
-        details { border-bottom: 1px solid #eee; padding: 8px 0; }
+        /* Accordion */
+        details { border-bottom: 1px solid #f1f5f9; padding: 10px 0; }
         details:last-child { border-bottom: none; }
         summary {
-            cursor: pointer; outline: none; display: flex;
-            justify-content: space-between; font-weight: 600; color: #444; list-style: none;
+            cursor: pointer; outline: none; display: flex; justify-content: space-between;
+            font-weight: 600; color: #475569; list-style: none;
         }
         summary::-webkit-details-marker { display: none; }
-        summary::after { content: '+'; color: #999; font-weight: bold; }
-        details[open] summary::after { content: '-'; }
+        summary:hover { color: #2563eb; }
+        
+        .video-list { margin-top: 10px; padding-left: 12px; border-left: 2px solid #e2e8f0; }
+        .video-item { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 6px; }
+        .video-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px; margin-right: 10px; }
 
-        .video-list { margin-top: 8px; padding-left: 10px; border-left: 2px solid #eee; }
-        .video-item {
-            display: flex; justify-content: space-between;
-            font-size: 11px; color: #666; margin-bottom: 4px;
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; }
+        .btn {
+            flex: 1; padding: 10px; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;
         }
-        .video-title {
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            max-width: 220px; margin-right: 10px;
-        }
-
-        /* RESET BUTTON STYLES */
-        .reset-btn {
-            background-color: #ef4444;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-top: 20px;
-            width: 100%;
-        }
+        .analytics-btn { background-color: #3b82f6; color: white; }
+        .analytics-btn:hover { background-color: #2563eb; }
+        .reset-btn { background-color: #ef4444; color: white; }
         .reset-btn:hover { background-color: #dc2626; }
+        .back-btn { background-color: #64748b; color: white; width: 100%; margin-top: 20px;}
+        .back-btn:hover { background-color: #475569; }
 
-        .footer { margin-top: 10px; font-size: 10px; color: #aaa; }
+        /* --- ANALYTICS VIEW STYLES --- */
+        .chart-wrapper { margin-top: 10px; display: flex; flex-direction: column; align-items: center;}
+        .legend { 
+            text-align: left; background: white; padding: 15px; border-radius: 8px; 
+            width: 100%; box-sizing: border-box; margin-top: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .legend-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; color: #475569; }
+        .color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; flex-shrink: 0;}
+        .legend-text { flex-grow: 1; display: flex; justify-content: space-between; width: 100%;}
+        .legend-percent { font-weight: bold; color: #1e293b; }
+
+        .footer { margin-top: 15px; font-size: 10px; color: #cbd5e1; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Daily Watch Time</h1>
-        <div id="date-display" class="date">Loading...</div>
         
-        <div class="timer-card">
-            <div id="time-display" class="time-display">00:00:00</div>
-            <div class="label">Total Time Consumed</div>
+        <div id="main-view">
+            <h1>Daily Watch Time</h1>
+            <div id="date-display" class="date">Loading...</div>
+            
+            <div class="timer-card">
+                <div id="time-display" class="time-display">00:00:00</div>
+                <div class="label">Total Time Today</div>
+            </div>
+
+            <div id="breakdown-container" class="breakdown">
+                <div style="text-align:center; color:#999; padding: 15px;">No videos watched yet</div>
+            </div>
+
+            <div class="btn-group">
+                <button id="analytics-btn" class="btn analytics-btn">📊 Analytics</button>
+                <button id="reset-btn" class="btn reset-btn">Reset Data</button>
+            </div>
         </div>
 
-        <div id="breakdown-container" class="breakdown">
-            <div style="text-align:center; color:#999; padding: 10px;">No data yet today</div>
+        <div id="analytics-view" class="hidden">
+            <h1>Consumption Analytics</h1>
+            <div class="chart-wrapper">
+                <canvas id="usageChart" width="280" height="280"></canvas>
+                <div id="legend" class="legend"></div>
+            </div>
+            <button id="back-btn" class="btn back-btn">← Back to Timer</button>
         </div>
 
-        <button id="reset-btn" class="reset-btn">Reset Data </button>
-
-        <div class="footer">Video Time Tracker Active</div>
+        <div class="footer">Video Tracker v2.1</div>
     </div>
     <script src="popup.js"></script>
 </body>
