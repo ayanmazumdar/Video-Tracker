@@ -6,69 +6,64 @@
     <title>Video Tracker</title>
     <style>
         body {
-            width: 300px;
+            width: 320px; /* Made slightly wider */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f9;
             color: #333;
             margin: 0;
             padding: 0;
         }
-        .container {
-            padding: 20px;
-            text-align: center;
-        }
-        h1 {
-            font-size: 18px;
-            margin-bottom: 5px;
-            color: #4a4a4a;
-        }
-        .date {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 20px;
-        }
+        .container { padding: 20px; text-align: center; }
+        h1 { font-size: 18px; margin-bottom: 5px; color: #4a4a4a; }
+        .date { font-size: 12px; color: #888; margin-bottom: 15px; }
+        
         .timer-card {
             background: white;
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
         }
-        .time-display {
-            font-size: 32px;
-            font-weight: bold;
-            color: #2563eb;
+        .time-display { font-size: 32px; font-weight: bold; color: #2563eb; }
+        .label { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 5px; }
+
+        /* New Styles for Domain List */
+        .breakdown {
+            text-align: left;
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 13px;
         }
-        .label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #666;
-            margin-top: 5px;
+        .domain-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
         }
-        .footer {
-            margin-top: 20px;
-            font-size: 11px;
-            color: #aaa;
-        }
-        /* Simple loader animation */
-        .loading {
-            opacity: 0.5;
-        }
+        .domain-row:last-child { border-bottom: none; }
+        .domain-name { font-weight: 500; color: #444; }
+        .domain-time { color: #888; }
+        
+        .footer { margin-top: 15px; font-size: 10px; color: #aaa; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Daily Watch Time</h1>
-        <div id="date-display" class="date">Loading date...</div>
+        <div id="date-display" class="date">Loading...</div>
         
         <div class="timer-card">
             <div id="time-display" class="time-display">00:00:00</div>
-            <div class="label">Time Consumed</div>
+            <div class="label">Total Time Consumed</div>
         </div>
 
-        <div class="footer">
-            Video Time Tracker Active
+        <div id="breakdown-container" class="breakdown">
+            <div style="text-align:center; color:#999;">No data yet today</div>
         </div>
+
+        <div class="footer">Video Time Tracker Active</div>
     </div>
     <script src="popup.js"></script>
 </body>

@@ -1,28 +1,40 @@
 // background.js
-// Handles storage and state management
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "logTime") {
-        updateTime(request.seconds);
-        // Send a response to keep the message channel open if needed, 
-        // and to avoid "message port closed" errors in content script
+        updateTime(request.seconds, request.domain);
         sendResponse({status: "success"}); 
     }
-    return true; // Indicates we wish to send a response asynchronously
+    return true; 
 });
 
-function updateTime(secondsToAdd) {
-    const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+function updateTime(secondsToAdd, domain) {
+    const today = new Date().toISOString().split('T')[0];
 
     chrome.storage.local.get([today], (result) => {
-        let currentSeconds = result[today] || 0;
-        let newTotal = currentSeconds + secondsToAdd;
+        // Initialize default structure
+        let data = result[today] || { total: 0, domains: {} };
 
-        let data = {};
-        data[today] = newTotal;
+        // MIGRATION: Handle case where old data was just a number
+        if (typeof data === 'number') {
+            data = { total: data, domains: {} };
+        }
 
-        chrome.storage.local.set(data, () => {
-            console.log(`Updated time for ${today}: ${newTotal}s`);
+        // Update Total
+        data.total += secondsToAdd;
+
+        // Update Specific Domain
+        // If domain doesn't exist yet, initialize it to 0
+        if (!data.domains[domain]) {
+            data.domains[domain] = 0;
+        }
+        data.domains[domain] += secondsToAdd;
+
+        // Save back to storage
+        let storageUpdate = {};
+        storageUpdate[today] = data;
+
+        chrome.storage.local.set(storageUpdate, () => {
+            console.log(`Updated: ${data.total}s total, ${data.domains[domain]}s for ${domain}`);
         });
     });
 }
