@@ -1,51 +1,39 @@
 // background.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "logTime") {
-        updateTime(request.seconds, request.domain, request.title);
+        updateTime(request.seconds, request.domain, request.title, request.category);
         sendResponse({status: "success"}); 
     }
     return true; 
 });
 
-function updateTime(secondsToAdd, domain, title) {
+function updateTime(secondsToAdd, domain, title, category) {
     const today = new Date().toISOString().split('T')[0];
 
     chrome.storage.local.get([today], (result) => {
-        let data = result[today] || { total: 0, domains: {} };
+        let data = result[today] || { total: 0, domains: {}, categories: {} };
+        if (typeof data === 'number') data = { total: data, domains: {}, categories: {} };
+        if (!data.categories) data.categories = {};
 
         // 1. Update Global Total
-        // Migration check for old data formats
-        if (typeof data === 'number') data = { total: data, domains: {} };
         data.total += secondsToAdd;
 
-        // 2. Initialize Domain if missing
-        if (!data.domains[domain]) {
-            // New structure: Object with 'total' and 'videos' map
-            data.domains[domain] = { total: 0, videos: {} };
-        }
-        
-        // Migration check: If domain data was just a number (from previous version), fix it
-        if (typeof data.domains[domain] === 'number') {
-            const oldTotal = data.domains[domain];
-            data.domains[domain] = { total: oldTotal, videos: {} };
-        }
+        // 2. Update Category Stats (The "Habit" Data)
+        if (!data.categories[category]) data.categories[category] = 0;
+        data.categories[category] += secondsToAdd;
 
-        // 3. Update Domain Total
+        // 3. Update Domain & Videos
+        if (!data.domains[domain]) data.domains[domain] = { total: 0, videos: {} };
+        if (typeof data.domains[domain] === 'number') data.domains[domain] = { total: data.domains[domain], videos: {} };
+
         data.domains[domain].total += secondsToAdd;
 
-        // 4. Update Specific Video Title
-        // Use a safe key for the title (replace dots/invalid chars if necessary, but usually strings are fine in JSON)
-        if (!data.domains[domain].videos[title]) {
-            data.domains[domain].videos[title] = 0;
-        }
-        data.domains[domain].videos[title] += secondsToAdd;
+        const safeTitle = title || "Unknown Video";
+        if (!data.domains[domain].videos[safeTitle]) data.domains[domain].videos[safeTitle] = 0;
+        data.domains[domain].videos[safeTitle] += secondsToAdd;
 
-        // Save
         let storageUpdate = {};
         storageUpdate[today] = data;
-
-        chrome.storage.local.set(storageUpdate, () => {
-            console.log(`Updated: ${domain} -> "${title}" (+${secondsToAdd}s)`);
-        });
+        chrome.storage.local.set(storageUpdate);
     });
 }

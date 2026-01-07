@@ -1,35 +1,44 @@
 // popup.js
+let activeMode = 'websites'; // State for chart toggle ('websites' or 'types')
+
 document.addEventListener('DOMContentLoaded', () => {
     updateDisplay();
-    // Real-time update for the main timer
     setInterval(updateDisplay, 1000);
 
-    // --- BUTTON LISTENERS ---
-
-    // 1. Reset
+    // Navigation & Reset
     document.getElementById('reset-btn').addEventListener('click', () => {
-        if(confirm("Are you sure you want to clear today's data?")) {
-            chrome.storage.local.clear(() => {
-                updateDisplay();
-            });
-        }
+        if(confirm("Clear today's data?")) chrome.storage.local.clear(() => updateDisplay());
     });
 
-    // 2. Go to Analytics
     document.getElementById('analytics-btn').addEventListener('click', () => {
         document.getElementById('main-view').classList.add('hidden');
         document.getElementById('analytics-view').classList.remove('hidden');
-        loadChart(); // Draw chart only when requested
+        loadChart(); 
     });
 
-    // 3. Go Back to Main
     document.getElementById('back-btn').addEventListener('click', () => {
         document.getElementById('analytics-view').classList.add('hidden');
         document.getElementById('main-view').classList.remove('hidden');
     });
-});
 
-// --- MAIN VIEW LOGIC ---
+    // Chart Toggles
+    const btnWeb = document.getElementById('toggle-websites');
+    const btnType = document.getElementById('toggle-types');
+
+    btnWeb.addEventListener('click', () => {
+        activeMode = 'websites';
+        btnWeb.classList.add('active');
+        btnType.classList.remove('active');
+        loadChart();
+    });
+
+    btnType.addEventListener('click', () => {
+        activeMode = 'types';
+        btnType.classList.add('active');
+        btnWeb.classList.remove('active');
+        loadChart();
+    });
+});
 
 function updateDisplay() {
     const today = new Date().toISOString().split('T')[0];
@@ -38,15 +47,14 @@ function updateDisplay() {
     if(dateEl) dateEl.textContent = new Date().toLocaleDateString(undefined, dateOptions);
 
     chrome.storage.local.get([today], (result) => {
-        let data = result[today] || { total: 0, domains: {} };
-        if (typeof data === 'number') data = { total: data, domains: {} };
+        let data = result[today] || { total: 0, domains: {}, categories: {} };
+        if (typeof data === 'number') data = { total: data, domains: {}, categories: {} };
 
         // Update Total
         document.getElementById('time-display').textContent = formatTime(data.total);
 
-        // Update List (Only if we are actually looking at the main view)
-        const mainView = document.getElementById('main-view');
-        if (!mainView.classList.contains('hidden')) {
+        // Update List (Only if main view is visible)
+        if (!document.getElementById('main-view').classList.contains('hidden')) {
             updateList(data);
         }
     });
@@ -54,16 +62,12 @@ function updateDisplay() {
 
 function updateList(data) {
     const listContainer = document.getElementById('breakdown-container');
-    
-    // Capture open state
     const currentlyOpenDomains = new Set();
     listContainer.querySelectorAll('details[open]').forEach(detail => {
-        const domainName = detail.querySelector('summary span').textContent;
-        currentlyOpenDomains.add(domainName);
+        currentlyOpenDomains.add(detail.querySelector('summary span').textContent);
     });
 
-    const sortedDomains = Object.entries(data.domains)
-        .sort(([, a], [, b]) => b.total - a.total);
+    const sortedDomains = Object.entries(data.domains).sort(([, a], [, b]) => b.total - a.total);
 
     if (sortedDomains.length === 0) {
         listContainer.innerHTML = '<div style="text-align:center; color:#999; padding:15px;">No videos watched yet</div>';
@@ -77,76 +81,76 @@ function updateList(data) {
         const isOpen = currentlyOpenDomains.has(domain) ? 'open' : '';
 
         const sortedVideos = Object.entries(videosMap).sort(([, a], [, b]) => b - a);
-
         let videoHtml = '';
         sortedVideos.forEach(([title, time]) => {
-            videoHtml += `
-                <div class="video-item">
-                    <span class="video-title" title="${title}">${title}</span>
-                    <span>${formatTime(time)}</span>
-                </div>`;
+            videoHtml += `<div class="video-item"><span class="video-title" title="${title}">${title}</span><span>${formatTime(time)}</span></div>`;
         });
         if (videoHtml === '') videoHtml = '<div class="video-item">No detailed titles</div>';
 
-        html += `
-            <details ${isOpen}>
-                <summary><span>${domain}</span><span>${formatTime(totalSeconds)}</span></summary>
-                <div class="video-list">${videoHtml}</div>
-            </details>`;
+        html += `<details ${isOpen}><summary><span>${domain}</span><span>${formatTime(totalSeconds)}</span></summary><div class="video-list">${videoHtml}</div></details>`;
     });
 
-    if (listContainer.innerHTML !== html) {
-        listContainer.innerHTML = html;
-    }
+    if (listContainer.innerHTML !== html) listContainer.innerHTML = html;
 }
-
-// --- ANALYTICS CHART LOGIC ---
 
 function loadChart() {
     const today = new Date().toISOString().split('T')[0];
-    
     chrome.storage.local.get([today], (result) => {
-        let data = result[today] || { total: 0, domains: {} };
-        if (typeof data === 'number') data = { total: data, domains: {} };
+        let data = result[today] || { total: 0, domains: {}, categories: {} };
+        if (typeof data === 'number') data = { total: data, domains: {}, categories: {} };
 
         if (data.total === 0) {
-            // Clear canvas if no data
             const ctx = document.getElementById('usageChart').getContext('2d');
-            ctx.clearRect(0, 0, 300, 300);
+            ctx.clearRect(0, 0, 280, 280);
             document.getElementById('legend').innerHTML = "<div style='text-align:center; color:#999'>No data recorded today</div>";
             return;
         }
 
-        drawPieChart(data.domains, data.total);
+        // DECIDE WHICH DATA TO DRAW
+        if (activeMode === 'websites') {
+            drawPieChart(data.domains, data.total, false); // false = not categories
+        } else {
+            drawPieChart(data.categories, data.total, true); // true = use fixed category colors
+        }
     });
 }
 
-function drawPieChart(domains, totalTime) {
+function drawPieChart(dataMap, totalTime, isCategoryMode) {
     const canvas = document.getElementById('usageChart');
     const ctx = canvas.getContext('2d');
     const legendContainer = document.getElementById('legend');
-    legendContainer.innerHTML = ''; // Clear previous legend
-    
-    // Clear previous chart
+    legendContainer.innerHTML = ''; 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const sortedDomains = Object.entries(domains)
-        .sort(([, a], [, b]) => b.total - a.total);
+    const sortedData = Object.entries(dataMap).sort(([, a], [, b]) => {
+        const valA = (typeof a === 'number') ? a : a.total || a;
+        const valB = (typeof b === 'number') ? b : b.total || b;
+        return valB - valA;
+    });
 
-    const colors = [
-        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', 
-        '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#64748b'
-    ];
+    // Colors
+    const palette = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316'];
+    const catColors = {
+        'Shorts/Reels': '#ef4444', // Red
+        'Long Form': '#10b981',     // Green
+        'Live Stream': '#f59e0b'    // Amber
+    };
 
     let startAngle = 0;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const radius = 100; // Smaller radius for popup
+    const radius = 100;
 
-    sortedDomains.forEach(([domain, domainData], index) => {
-        const time = domainData.total;
-        const sliceAngle = (time / totalTime) * 2 * Math.PI;
-        const color = colors[index % colors.length];
+    sortedData.forEach(([label, valueData], index) => {
+        const val = (typeof valueData === 'number') ? valueData : valueData.total;
+        if(val === 0) return;
+
+        const sliceAngle = (val / totalTime) * 2 * Math.PI;
+        
+        // Pick color: Fixed map if category mode, otherwise palette
+        const color = isCategoryMode 
+            ? (catColors[label] || '#64748b') 
+            : palette[index % palette.length];
 
         // Draw Slice
         ctx.beginPath();
@@ -155,24 +159,19 @@ function drawPieChart(domains, totalTime) {
         ctx.closePath();
         ctx.fillStyle = color;
         ctx.fill();
-        
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#fff';
         ctx.stroke();
 
-        // Add Legend Item
-        const percentage = ((time / totalTime) * 100).toFixed(1);
+        // Legend
+        const percentage = ((val / totalTime) * 100).toFixed(1);
         const legendItem = document.createElement('div');
         legendItem.className = 'legend-item';
         legendItem.innerHTML = `
             <div class="color-box" style="background-color: ${color}"></div>
-            <div class="legend-text">
-                <span>${domain}</span>
-                <span class="legend-percent">${percentage}%</span>
-            </div>
+            <div class="legend-text"><span>${label}</span><span style="font-weight:bold">${percentage}%</span></div>
         `;
         legendContainer.appendChild(legendItem);
-
         startAngle += sliceAngle;
     });
 }
