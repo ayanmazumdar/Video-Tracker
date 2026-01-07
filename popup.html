@@ -6,7 +6,7 @@
     <title>Video Tracker</title>
     <style>
         body {
-            width: 350px; /* Wider to fit titles */
+            width: 350px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f9;
             color: #333;
@@ -37,47 +37,41 @@
         }
 
         /* Accordion Styles */
-        details {
-            border-bottom: 1px solid #eee;
-            padding: 8px 0;
-        }
+        details { border-bottom: 1px solid #eee; padding: 8px 0; }
         details:last-child { border-bottom: none; }
-        
         summary {
-            cursor: pointer;
-            outline: none;
-            display: flex;
-            justify-content: space-between;
-            font-weight: 600;
-            color: #444;
-            list-style: none; /* Hides default triangle in some browsers */
+            cursor: pointer; outline: none; display: flex;
+            justify-content: space-between; font-weight: 600; color: #444; list-style: none;
         }
-        /* Custom arrow for summary */
         summary::-webkit-details-marker { display: none; }
         summary::after { content: '+'; color: #999; font-weight: bold; }
         details[open] summary::after { content: '-'; }
 
-        .video-list {
-            margin-top: 8px;
-            padding-left: 10px;
-            border-left: 2px solid #eee;
-        }
+        .video-list { margin-top: 8px; padding-left: 10px; border-left: 2px solid #eee; }
         .video-item {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px; /* Smaller font for titles */
-            color: #666;
-            margin-bottom: 4px;
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: #666; margin-bottom: 4px;
         }
         .video-title {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 220px;
-            margin-right: 10px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 220px; margin-right: 10px;
         }
 
-        .footer { margin-top: 15px; font-size: 10px; color: #aaa; }
+        /* RESET BUTTON STYLES */
+        .reset-btn {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .reset-btn:hover { background-color: #dc2626; }
+
+        .footer { margin-top: 10px; font-size: 10px; color: #aaa; }
     </style>
 </head>
 <body>
@@ -93,6 +87,8 @@
         <div id="breakdown-container" class="breakdown">
             <div style="text-align:center; color:#999; padding: 10px;">No data yet today</div>
         </div>
+
+        <button id="reset-btn" class="reset-btn">Reset Data </button>
 
         <div class="footer">Video Time Tracker Active</div>
     </div>
