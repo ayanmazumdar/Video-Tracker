@@ -5,7 +5,8 @@
   "description": "Tracks video watch time by website and video title with visual analytics.",
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "<all_urls>"

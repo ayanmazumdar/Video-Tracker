@@ -1,8 +1,8 @@
 // content.js
 let accumulatedTime = 0;
-const SYNC_INTERVAL = 5000; 
+const SYNC_INTERVAL = 1000;
 let lastSyncTime = Date.now();
-const hostname = window.location.hostname; 
+const hostname = window.location.hostname;
 
 console.log(`Video Tracker: Active on ${hostname}`);
 
@@ -18,7 +18,7 @@ const trackingInterval = setInterval(() => {
     for (const video of videos) {
         if (!video.paused && !video.ended && video.readyState > 2) {
             activeVideo = video;
-            break; 
+            break;
         }
     }
 
@@ -29,26 +29,41 @@ const trackingInterval = setInterval(() => {
     if (Date.now() - lastSyncTime > SYNC_INTERVAL && accumulatedTime > 0) {
         syncTime(activeVideo);
     }
-}, 1000); 
+}, 1000);
 
 function determineCategory(video) {
-    const url = window.location.href;
-    
-    // 1. Explicit URL Check
-    if (url.includes('/shorts/')) return 'Shorts/Reels';
-    if (url.includes('/reels/')) return 'Shorts/Reels';
-    if (hostname.includes('tiktok.com')) return 'Shorts/Reels';
+    if (!video) return 'Long Form';
 
-    // 2. Duration Check
-    if (video && Number.isFinite(video.duration)) {
-        if (video.duration < 90) return 'Shorts/Reels'; // Under 90s
-        return 'Long Form'; 
+    // Get URL for branding checks
+    const url = window.location.href;
+
+    // 1. Live Stream Check (Infinity Duration)
+    if (video.duration === Infinity) return 'Live Stream';
+
+    // 2. Aspect Ratio Check (Vertical = Shorts/Reels)
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+        const aspectRatio = video.videoWidth / video.videoHeight;
+        if (aspectRatio < 0.9) {
+            // Specific Branding Check based on URL
+            if (url.includes('youtube.com/shorts/')) return 'YouTube Shorts';
+            if (url.includes('instagram.com/reels/') || url.includes('facebook.com/reel/')) return 'Reels';
+            if (url.includes('tiktok.com')) return 'TikTok';
+
+            return 'Short Video'; // Generic vertical
+        }
     }
 
-    // 3. Fallback for Live Streams
-    if (video && video.duration === Infinity) return 'Live Stream';
+    // 3. Duration Check (Fallback for Horizontal Shorts)
+    if (Number.isFinite(video.duration)) {
+        if (video.duration < 90) {
+            // Check branding even for horizontal shorts (unlikely but possible)
+            if (url.includes('youtube.com/shorts/')) return 'YouTube Shorts';
+            return 'Short Video';
+        }
+        return 'Long Form';
+    }
 
-    return 'Long Form'; // Default
+    return 'Long Form'; // Default safety
 }
 
 function syncTime(videoElement) {
@@ -60,7 +75,7 @@ function syncTime(videoElement) {
     }
 
     let currentTitle = document.title.trim();
-    // Default to Long Form if video element is lost during sync
+    // Use the determined category
     let category = videoElement ? determineCategory(videoElement) : 'Long Form';
 
     try {
