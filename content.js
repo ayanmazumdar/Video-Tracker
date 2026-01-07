@@ -1,16 +1,13 @@
 // content.js
-// This script runs on every page. It checks for playing videos.
-
 let accumulatedTime = 0;
 const SYNC_INTERVAL = 5000; 
 let lastSyncTime = Date.now();
-// Capture the domain (e.g., "youtube.com")
+// We'll capture the title dynamically inside the loop
 const hostname = window.location.hostname; 
 
 console.log(`Video Tracker: Script loaded on ${hostname}`);
 
 const trackingInterval = setInterval(() => {
-    // 1. Safety Check
     if (!chrome.runtime?.id) {
         clearInterval(trackingInterval);
         return;
@@ -44,19 +41,23 @@ function syncTime() {
         return;
     }
 
+    // Capture the current page title (e.g., "Rick Astley - Never Gonna Give You Up - YouTube")
+    // We trim whitespace to keep it clean
+    let currentTitle = document.title.trim();
+
     try {
-        // CHANGED: We now send the 'domain' along with the time
         chrome.runtime.sendMessage({
             action: "logTime",
             seconds: accumulatedTime,
-            domain: hostname
+            domain: hostname,
+            title: currentTitle // NEW: Sending the specific video title
         }, (response) => {
             if (chrome.runtime.lastError) {
                 clearInterval(trackingInterval);
             }
         });
 
-        console.log(`Video Tracker: Syncing ${accumulatedTime}s for ${hostname}`);
+        console.log(`Video Tracker: Syncing ${accumulatedTime}s for "${currentTitle}"`);
         accumulatedTime = 0;
         lastSyncTime = Date.now();
 

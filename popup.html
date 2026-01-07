@@ -6,7 +6,7 @@
     <title>Video Tracker</title>
     <style>
         body {
-            width: 320px; /* Made slightly wider */
+            width: 350px; /* Wider to fit titles */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f9;
             color: #333;
@@ -27,25 +27,56 @@
         .time-display { font-size: 32px; font-weight: bold; color: #2563eb; }
         .label { font-size: 11px; text-transform: uppercase; color: #666; margin-top: 5px; }
 
-        /* New Styles for Domain List */
         .breakdown {
             text-align: left;
             background: white;
             border-radius: 8px;
-            padding: 10px;
+            padding: 5px 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             font-size: 13px;
         }
-        .domain-row {
+
+        /* Accordion Styles */
+        details {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+        }
+        details:last-child { border-bottom: none; }
+        
+        summary {
+            cursor: pointer;
+            outline: none;
             display: flex;
             justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            color: #444;
+            list-style: none; /* Hides default triangle in some browsers */
         }
-        .domain-row:last-child { border-bottom: none; }
-        .domain-name { font-weight: 500; color: #444; }
-        .domain-time { color: #888; }
-        
+        /* Custom arrow for summary */
+        summary::-webkit-details-marker { display: none; }
+        summary::after { content: '+'; color: #999; font-weight: bold; }
+        details[open] summary::after { content: '-'; }
+
+        .video-list {
+            margin-top: 8px;
+            padding-left: 10px;
+            border-left: 2px solid #eee;
+        }
+        .video-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px; /* Smaller font for titles */
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .video-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+            margin-right: 10px;
+        }
+
         .footer { margin-top: 15px; font-size: 10px; color: #aaa; }
     </style>
 </head>
@@ -60,7 +91,7 @@
         </div>
 
         <div id="breakdown-container" class="breakdown">
-            <div style="text-align:center; color:#999;">No data yet today</div>
+            <div style="text-align:center; color:#999; padding: 10px;">No data yet today</div>
         </div>
 
         <div class="footer">Video Time Tracker Active</div>
