@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Video Time Tracker",
+  "name": "BingeMeter",
   "version": "2.1",
   "description": "Tracks video watch time by website and video title with visual analytics.",
   "permissions": [
