@@ -1,6 +1,6 @@
 // content.js
 let accumulatedTime = 0;
-const SYNC_INTERVAL = 1000;
+const SYNC_INTERVAL = 5000;
 let lastSyncTime = Date.now();
 const hostname = window.location.hostname;
 

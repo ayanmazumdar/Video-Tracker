@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeRange === 'today' && !document.getElementById('main-view').classList.contains('hidden')) {
             updateDisplay();
         }
-    }, 1000);
+    }, 5000);
 
     // Reset Button (Manual Clear for Today)
     document.getElementById('reset-btn').addEventListener('click', () => {
@@ -75,6 +75,11 @@ function toggleTheme() {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     applyTheme(newTheme);
     chrome.storage.local.set({ theme: newTheme });
+
+    // Refresh chart if visible to update axis/grid colors
+    if (!document.getElementById('analytics-view').classList.contains('hidden')) {
+        renderChart(-1);
+    }
 }
 
 function applyTheme(theme) {
@@ -192,8 +197,8 @@ function loadChart() {
             return;
         }
 
-        if (activeMode === 'websites') drawPieChart(aggregated.domains, aggregated.total, false);
-        else drawPieChart(aggregated.categories, aggregated.total, true);
+        if (activeMode === 'websites') drawChart(aggregated.domains, aggregated.total, false);
+        else drawChart(aggregated.categories, aggregated.total, true);
     });
 }
 
@@ -204,8 +209,7 @@ let currentDataMap = null;
 let currentTotalTime = 0;
 let currentIsCategoryMode = false;
 
-function drawPieChart(dataMap, totalTime, isCategoryMode) {
-    // Note: Function name kept for compatibility with existing calls, but implementation is now Bar Chart
+function drawChart(dataMap, totalTime, isCategoryMode) {
     currentDataMap = dataMap;
     currentTotalTime = totalTime;
     currentIsCategoryMode = isCategoryMode;
@@ -214,127 +218,194 @@ function drawPieChart(dataMap, totalTime, isCategoryMode) {
     renderChart(-1);
 }
 
+const PALETTE = ['#A78BFA', '#F472B6', '#34D399', '#60A5FA', '#FBBF24', '#F87171', '#818CF8', '#2DD4BF', '#FB923C'];
+const CATEGORY_COLORS = {
+    'YouTube Shorts': '#F87171',
+    'Reels': '#E1306C',
+    'TikTok': '#000000',
+    'Short Video': '#F472B6',
+    'Long Form': '#34D399',
+    'Live Stream': '#FBBF24',
+    'Shorts/Reels': '#F472B6'
+};
+
 function renderChart(hoverIndex) {
     const canvas = document.getElementById('usageChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // Clear Canvas
+    // Layout Constants
+    const marginLeft = 35;
+    const marginBottom = 20;
+    const marginTop = 10;
+    const marginRight = 10;
+    const graphW = canvas.width - marginLeft - marginRight;
+    const graphH = canvas.height - marginBottom - marginTop;
+    const graphX = marginLeft;
+    const graphY = marginTop;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Prepare Data
     const sortedData = Object.entries(currentDataMap).sort(([, a], [, b]) => {
         const valA = (typeof a === 'number') ? a : a.total || a;
         const valB = (typeof b === 'number') ? b : b.total || b;
         return valB - valA;
     });
-
-    // Limit to top 7 items to prevent overcrowding
     const displayData = sortedData.slice(0, 7);
 
-    // Palette
-    const palette = ['#A78BFA', '#F472B6', '#34D399', '#60A5FA', '#FBBF24', '#F87171', '#818CF8', '#2DD4BF', '#FB923C'];
-    const catColors = {
-        'YouTube Shorts': '#F87171',
-        'Reels': '#E1306C',
-        'TikTok': '#000000',
-        'Short Video': '#F472B6',
-        'Long Form': '#34D399',
-        'Live Stream': '#FBBF24',
-        'Shorts/Reels': '#F472B6'
+    // Calculate Scale
+    let yMax = calculateYMax(displayData);
+
+    // Draw Components
+    drawGrid(ctx, graphX, graphY, graphW, graphH, yMax);
+    drawBars(ctx, displayData, graphX, graphY, graphH, graphW, yMax, hoverIndex);
+
+    // Update Legend (only on fresh render, not hover)
+    if (hoverIndex === -1) updateLegend(displayData);
+}
+
+function calculateYMax(displayData) {
+    let yMax;
+    if (activeRange === 'today') {
+        const totalSeconds = currentTotalTime;
+        if (totalSeconds < 3600) yMax = 3600;
+        else if (totalSeconds < 18000) yMax = 18000;
+        else yMax = 36000;
+    } else if (activeRange === '7days') {
+        yMax = 70 * 3600;
+    } else {
+        yMax = 300 * 3600;
+    }
+
+    const dataMax = displayData.length > 0
+        ? Math.max(...displayData.map(([, v]) => (typeof v === 'number' ? v : v.total)))
+        : 0;
+    return Math.max(yMax, dataMax);
+}
+
+function drawGrid(ctx, x, y, w, h, yMax) {
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+
+    const themeParams = {
+        gridColor: 'rgba(150, 150, 150, 0.2)',
+        textColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#6b7280'
     };
 
-    const themeBg = document.documentElement.getAttribute('data-theme') === 'dark' ? '#0f172a' : '#ffffff';
+    ctx.strokeStyle = themeParams.gridColor;
+    ctx.fillStyle = themeParams.textColor;
+    ctx.font = '10px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
 
-    // Update legend only on initial full draw
-    if (hoverIndex === -1) document.getElementById('legend').innerHTML = '';
+    // Vertical Lines
+    for (let i = 0; i <= 5; i++) {
+        const lineX = x + (w / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(lineX, y);
+        ctx.lineTo(lineX, y + h);
+        ctx.stroke();
+    }
 
-    cachedBars = [];
+    // Horizontal Lines & Labels
+    const steps = 5;
+    for (let i = 0; i <= steps; i++) {
+        const ratio = i / steps;
+        const lineY = y + h - (h * ratio);
 
+        ctx.beginPath();
+        ctx.moveTo(x, lineY);
+        ctx.lineTo(x + w, lineY);
+        ctx.stroke();
+
+        const valSeconds = yMax * ratio;
+        ctx.fillText(formatAxisTime(valSeconds), x - 6, lineY);
+    }
+    ctx.setLineDash([]);
+}
+
+function drawBars(ctx, displayData, graphX, graphY, graphH, graphW, yMax, hoverIndex) {
     if (displayData.length === 0) return;
 
-    const maxVal = Math.max(...displayData.map(([, v]) => (typeof v === 'number' ? v : v.total)));
-    const chartHeight = canvas.height - 20; // Reserve bottom space
-    const chartWidth = canvas.width;
-
-    // Slimmer Bars Logic
-    // We strive for slimmer bars (max 16px) and center them
-    let barWidth = 16;
-    let barSpacing = 12;
-
-    // Check if we need to shrink spacing/width for many items (though 7 items fits easily)
-    // 7 items * 16px = 112px. Spacing = 12 * 6 = 72. Total = 184. Fits in 220.
-
+    cachedBars = [];
+    const barWidth = 12;
+    const barSpacing = 8;
     const totalContentWidth = (barWidth * displayData.length) + (barSpacing * (displayData.length - 1));
-    let currentX = (chartWidth - totalContentWidth) / 2; // Center alignment
+    let currentX = graphX + (graphW - totalContentWidth) / 2;
 
     displayData.forEach(([label, valueData], index) => {
         const val = (typeof valueData === 'number') ? valueData : valueData.total;
-
-        // Calculate Height relative to max
-        const barHeight = (val / maxVal) * chartHeight;
+        const barHeight = (val / yMax) * graphH;
         const x = currentX;
-        const y = canvas.height - barHeight; // Draw from bottom up
+        const y = graphY + graphH - barHeight;
 
-        let color = currentIsCategoryMode ? (catColors[label] || palette[index % palette.length]) : palette[index % palette.length];
+        let color = currentIsCategoryMode
+            ? (CATEGORY_COLORS[label] || PALETTE[index % PALETTE.length])
+            : PALETTE[index % PALETTE.length];
 
-        // --- ANIMATION/HOVER STATE ---
         const isHovered = (index === hoverIndex);
 
-        // Dimming Effect
-        if (hoverIndex !== -1 && !isHovered) {
-            ctx.globalAlpha = 0.3;
-        } else {
-            ctx.globalAlpha = 1.0;
-        }
+        // Dimming
+        ctx.globalAlpha = (hoverIndex !== -1 && !isHovered) ? 0.3 : 1.0;
 
-        // Glitch/Grow Effect
-        const drawHeight = isHovered ? barHeight + 5 : barHeight; // Grow Up
-        const drawY = canvas.height - drawHeight;
-        const drawX = isHovered ? x - 1 : x; // Expand width slightly
+        // Hover Effect
+        const drawHeight = isHovered ? barHeight + 4 : barHeight;
+        const drawY = graphY + graphH - drawHeight;
+        const drawX = isHovered ? x - 1 : x;
         const drawW = isHovered ? barWidth + 2 : barWidth;
 
         ctx.fillStyle = color;
+        ctx.shadowColor = isHovered ? color : 'transparent';
+        ctx.shadowBlur = isHovered ? 10 : 0;
 
-        if (isHovered) {
-            ctx.shadowColor = color;
-            ctx.shadowBlur = 20;
-            ctx.fillStyle = adjustBrightness(color, 40);
-        } else {
-            ctx.shadowBlur = 0;
-        }
-
-        // Draw Bar
         ctx.beginPath();
-        // Rounded top corners
-        ctx.roundRect(drawX, drawY, drawW, drawHeight, [4, 4, 0, 0]);
+        ctx.roundRect(drawX, drawY, drawW, drawHeight, [3, 3, 0, 0]);
         ctx.fill();
-        ctx.shadowBlur = 0;
 
-        // Cache for Hit Detection
         cachedBars.push({
-            index: index,
-            x: x,
-            y: canvas.height - barHeight, // Original top
-            width: barWidth,
-            height: barHeight,
-            label: label,
-            val: val,
-            color: color
+            index, x, y, width: barWidth, height: barHeight, label, color
         });
-
-        // Add to Legend (Only once)
-        if (hoverIndex === -1) {
-            const percentage = ((val / currentTotalTime) * 100).toFixed(1);
-            const legendItem = document.createElement('div');
-            legendItem.className = 'legend-item';
-            legendItem.innerHTML = `<div class="color-dot" style="background-color: ${color}"></div><div class="legend-text"><span>${label}</span><span style="font-weight:bold">${percentage}%</span></div>`;
-            document.getElementById('legend').appendChild(legendItem);
-        }
 
         currentX += barWidth + barSpacing;
     });
 
     ctx.globalAlpha = 1.0;
+    ctx.shadowBlur = 0;
+}
+
+function updateLegend(displayData) {
+    const legend = document.getElementById('legend');
+    legend.innerHTML = '';
+
+    displayData.forEach(([label, valueData], index) => {
+        const val = (typeof valueData === 'number') ? valueData : valueData.total;
+        const color = currentIsCategoryMode
+            ? (CATEGORY_COLORS[label] || PALETTE[index % PALETTE.length])
+            : PALETTE[index % PALETTE.length];
+
+        const percentage = currentTotalTime > 0 ? ((val / currentTotalTime) * 100).toFixed(1) : 0;
+
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `<div class="color-dot" style="background-color: ${color}"></div>
+                         <div class="legend-text">
+                             <span>${label}</span>
+                             <span style="font-weight:bold">${percentage}%</span>
+                         </div>`;
+        legend.appendChild(item);
+    });
+}
+
+function formatAxisTime(seconds) {
+    if (seconds === 0) return '0';
+    const h = seconds / 3600;
+    if (h >= 1) {
+        // Show decimal formatting if needed, e.g. 1.5h, but mostly integer is cleaner if grid lines align
+        return Math.abs(h % 1) < 0.1 ? `${Math.floor(h)}h` : `${h.toFixed(1)}h`;
+    }
+    const m = Math.floor(seconds / 60);
+    return `${m}m`;
 }
 
 // Interaction Event Listeners
@@ -397,21 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Helper for hover brightness
-function adjustBrightness(col, amt) {
-    let usePound = false;
-    if (col[0] == "#") {
-        col = col.slice(1);
-        usePound = true;
-    }
-    let num = parseInt(col, 16);
-    let r = (num >> 16) + amt;
-    if (r > 255) r = 255; else if (r < 0) r = 0;
-    let b = ((num >> 8) & 0x00FF) + amt;
-    if (b > 255) b = 255; else if (b < 0) b = 0;
-    let g = (num & 0x0000FF) + amt;
-    if (g > 255) g = 255; else if (g < 0) g = 0;
-    return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16);
-}
+
 
 function formatTime(seconds) {
     const h = Math.floor(seconds / 3600);

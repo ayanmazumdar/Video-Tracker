@@ -23,13 +23,9 @@ function updateTimeSafe(secondsToAdd, domain, title, category) {
             if (typeof data === 'number') data = { total: data, domains: {}, categories: {} };
             if (!data.categories) data.categories = {};
 
-            // 1. Update Global Total (De-duplication Logic)
-            // We only increment total time if this "second" hasn't been counted yet.
-            const currentEpoch = Math.floor(Date.now() / 1000);
-            if (!data.lastEpoch || currentEpoch > data.lastEpoch) {
-                data.total += 1; // Increment by 1s real-time
-                data.lastEpoch = currentEpoch;
-            }
+            // 1. Update Global Total
+            // We directly add the accumulated seconds from the content script.
+            data.total += secondsToAdd;
 
             // 2. Update Category Stats (Always increment)
             if (!data.categories[category]) data.categories[category] = 0;
