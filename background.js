@@ -41,9 +41,11 @@ function updateTimeSafe(secondsToAdd, domain, title, category) {
             if (!data.domains[domain].videos[safeTitle]) data.domains[domain].videos[safeTitle] = 0;
             data.domains[domain].videos[safeTitle] += secondsToAdd;
 
-            // Save Metadata (Category)
+            // Save Metadata (Category) - Store "Clean" category for the List UI
+            // but we kept the full 'category' for the Global Stats/Chart above.
+            const cleanCategory = category.replace(' (Background)', '');
             if (!data.domains[domain].meta) data.domains[domain].meta = {};
-            data.domains[domain].meta[safeTitle] = { category: category };
+            data.domains[domain].meta[safeTitle] = { category: cleanCategory };
 
             // 4. Save and Resolve
             let storageUpdate = {};

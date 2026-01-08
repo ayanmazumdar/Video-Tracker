@@ -226,7 +226,14 @@ const CATEGORY_COLORS = {
     'Short Video': '#F472B6',
     'Long Form': '#34D399',
     'Live Stream': '#FBBF24',
-    'Shorts/Reels': '#F472B6'
+    'Shorts/Reels': '#F472B6',
+    // Background Variants
+    'YouTube Shorts (Background)': '#991B1B', // Darker Red
+    'Reels (Background)': '#831843',      // Darker Pink
+    'TikTok (Background)': '#374151',     // Dark Gray
+    'Short Video (Background)': '#BE185D', // Darker Pink
+    'Long Form (Background)': '#047857',   // Darker Green
+    'Live Stream (Background)': '#B45309'  // Darker Yellow
 };
 
 function renderChart(hoverIndex) {
@@ -290,7 +297,7 @@ function drawGrid(ctx, x, y, w, h, yMax) {
 
     const themeParams = {
         gridColor: 'rgba(150, 150, 150, 0.2)',
-        textColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#6b7280'
+        textColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#4b5563'
     };
 
     ctx.strokeStyle = themeParams.gridColor;
